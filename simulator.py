@@ -127,6 +127,13 @@ class MainWindow(QMainWindow):
         self.planet2.mass = self.planet1.mass / 2.0
         self.planets = [self.planet1, self.planet2]
 
+        # Common centre of mass
+        """
+        self.planet1 = Planet(-250, 250, 0, 10, 100, QColor(0, 255, 0))
+        self.planet2 = Planet(250, 250, 0, -10, 100, QColor(0, 255, 255))
+        self.planets = [self.planet1, self.planet2]
+        """
+
         # Elongated
         """
         self.draw_trace_length = 20000
