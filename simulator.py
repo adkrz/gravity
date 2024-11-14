@@ -1,6 +1,7 @@
 import math
 import sys
 from typing import Sequence
+from collections import deque
 
 from PyQt5.QtCore import QRectF, QTimer, QPointF
 from PyQt5.QtGui import QColor
@@ -33,6 +34,9 @@ class Vector:
     def scalar_multiply(self, value: float) -> "Vector":
         return Vector(self.dx * value, self.dy * value)
 
+    def scalar_divide(self, value: float) -> "Vector":
+        return Vector(self.dx / value, self.dy / value)
+
     @staticmethod
     def sum(vectors: Sequence["Vector"]) -> "Vector":
         return Vector(sum(v.dx for v in vectors), sum(v.dy for v in vectors))
@@ -48,6 +52,7 @@ class Planet:
         self.velocity = Vector(x_vel, y_vel)
         self.graphics_item = QGraphicsEllipseItem(self._gen_rect())
         self.graphics_item.setBrush(color)
+        self.trace = deque()
 
     def pos(self) -> QPointF:
         return self._pos
@@ -72,6 +77,10 @@ class Planet:
     def dist_to(self, planet2: "Planet") -> float:
         return math.hypot(self._pos.x() - planet2._pos.x(), self._pos.y() - planet2._pos.y())
 
+    def dist_to_squared(self, planet2: "Planet") -> float:
+        return (self._pos.x() - planet2._pos.x()) * (self._pos.x() - planet2._pos.x()) \
+                + (self._pos.y() - planet2._pos.y()) * (self._pos.y() - planet2._pos.y())
+
     def angle_to(self, planet2: "Planet") -> float:
         return math.atan2(planet2._pos.y() - self._pos.y(), planet2._pos.x() - self._pos.x())
 
@@ -79,7 +88,7 @@ class Planet:
         return Vector.fromAngleAndLength(self.angle_to(planet2), length)
 
     def force_to(self, planet2: "Planet") -> Vector:
-        force_value = GRAVITATIONAL_CONSTANT * self.mass * planet2.mass / self.dist_to(planet2) ** 2
+        force_value = GRAVITATIONAL_CONSTANT * self.mass * planet2.mass / self.dist_to_squared(planet2)
         return self.vector_to(planet2, force_value)
 
 
@@ -194,6 +203,8 @@ class MainWindow(QMainWindow):
 
         self.view_update_divider = 0
         self.update_every_nth_frame = 3
+        self.scene_rect_update_divider = 0
+        self.scene_rect_update_every_nth_frame = 50
         self.time_step = 0.05
 
         self.setWindowTitle("Gravity")
@@ -201,6 +212,7 @@ class MainWindow(QMainWindow):
 
     def timer_update(self):
         update_view = self.view_update_divider == 0
+        update_scene_rect = self.scene_rect_update_divider == 0
 
         positions = {p: p.pos() for p in self.planets}
         for planet in self.planets:
@@ -209,7 +221,7 @@ class MainWindow(QMainWindow):
             other_planets = [p for p in self.planets if p != planet]
             forces = [planet.force_to(p) for p in other_planets]
             force_sum = Vector.sum(forces)
-            acceleration = force_sum.scalar_multiply(1.0 / planet.mass)
+            acceleration = force_sum.scalar_divide(planet.mass)
             new_vel = planet.velocity.add(acceleration.scalar_multiply(self.time_step))
             planet.velocity = new_vel
             new_pos = new_vel.scalar_multiply(self.time_step).movePoint(positions[planet])
@@ -217,25 +229,22 @@ class MainWindow(QMainWindow):
         for planet, pos in positions.items():
             planet.move_abs(pos, update_view)
 
-        if update_view:
+        if update_scene_rect:
             self._fit_scene_rect()
+        if update_view:
             if self.scene_auto_adjust:
                 self.view.fitInView(self.scene.sceneRect(), True)
 
             for planet in self.planets:
                 pos = planet.pos()
                 e = self.scene.addEllipse(pos.x(), pos.y(), 5, 5, planet.color)
-                e.setData(1, self.draw_trace_length)
-
-            for obj in self.scene.items():
-                life_timer = obj.data(1)
-                if life_timer is not None:
-                    if life_timer > 0:
-                        obj.setData(1, life_timer - 1)
-                    else:
-                        self.scene.removeItem(obj)
+                planet.trace.append(e)
+                if len(planet.trace) > self.draw_trace_length:
+                    last = planet.trace.popleft()
+                    self.scene.removeItem(last)
 
         self.view_update_divider = self.update_every_nth_frame if self.view_update_divider == 0 else self.view_update_divider - 1
+        self.scene_rect_update_divider = self.scene_rect_update_every_nth_frame if self.scene_rect_update_divider == 0 else self.scene_rect_update_divider - 1
 
     def _fit_scene_rect(self):
         rect = self.scene.itemsBoundingRect()
@@ -243,7 +252,6 @@ class MainWindow(QMainWindow):
         dim = max(rect.width(), rect.height()) * self.scene_rect_zoom
         rect2 = QRectF(QPointF(center.x() - dim, center.y() - dim), QPointF(center.x() + dim, center.y() + dim))
         self.scene.setSceneRect(rect2)
-
 
 
 app = QApplication(sys.argv)
