@@ -93,9 +93,10 @@ class MainWindow(QMainWindow):
         self.scene.setBackgroundBrush(QColor(0, 0, 0))
         self.view.setScene(self.scene)
         self.view.setDragMode(QGraphicsView.ScrollHandDrag)
-        self.view.setInteractive(True)
 
         self.draw_trace_length = 2000
+        self.scene_auto_adjust = False
+        self.scene_rect_zoom = 1
 
         # Normal orbit
         self.planet1 = Planet(0, 0, 0, 0, 100, QColor(0,255,0))
@@ -110,6 +111,8 @@ class MainWindow(QMainWindow):
         self.planet1.stationary = True
         self.planet2 = Planet(250, 250, 15, -15, 60, QColor(0, 255, 255))
         self.planet2.mass = self.planet1.mass / 2.0
+        self.scene_auto_adjust = True
+        self.scene_rect_zoom = 1
         """
 
         # Chasing
@@ -117,11 +120,16 @@ class MainWindow(QMainWindow):
         self.planet1 = Planet(0, 0, 0, 0, 100, QColor(0,255,0))
         self.planet2 = Planet(250, 250, 10, -30, 60, QColor(0,255,255))
         self.planet2.mass = 2
+        self.scene_auto_adjust = True
         """
 
         self.planets = [self.planet1, self.planet2]
         for planet in self.planets:
             self.scene.addItem(planet.graphics_item)
+
+        self._fit_scene_rect()
+        self.view.centerOn(self.planet1.graphics_item)
+        self.view.fitInView(self.scene.sceneRect(), True)
 
         self.setCentralWidget(self.view)
 
@@ -157,13 +165,9 @@ class MainWindow(QMainWindow):
             planet.move_abs(pos, update_view)
 
         if update_view:
-            rect = self.scene.itemsBoundingRect()
-            center = rect.center()
-            dim = max(rect.width(), rect.height()) * 3
-            rect2 = QRectF(QPointF(center.x() - dim, center.y() - dim), QPointF(center.x() + dim, center.y() + dim))
-            self.scene.setSceneRect(rect2)
-            self.view.fitInView(self.scene.itemsBoundingRect(), True)
-            #self.view.centerOn(self.planet1.graphics_item)
+            self._fit_scene_rect()
+            if self.scene_auto_adjust:
+                self.view.fitInView(self.scene.sceneRect(), True)
 
             for planet in self.planets:
                 pos = planet.pos()
@@ -179,6 +183,14 @@ class MainWindow(QMainWindow):
                         self.scene.removeItem(obj)
 
         self.view_update_divider = self.update_every_nth_frame if self.view_update_divider == 0 else self.view_update_divider - 1
+
+    def _fit_scene_rect(self):
+        rect = self.scene.itemsBoundingRect()
+        center = rect.center()
+        dim = max(rect.width(), rect.height()) * self.scene_rect_zoom
+        rect2 = QRectF(QPointF(center.x() - dim, center.y() - dim), QPointF(center.x() + dim, center.y() + dim))
+        self.scene.setSceneRect(rect2)
+
 
 
 app = QApplication(sys.argv)
