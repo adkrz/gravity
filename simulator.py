@@ -112,13 +112,11 @@ class MainWindow(QMainWindow):
         self.scene_rect_zoom = 1
 
         # Normal orbit
-        """
         self.planet1 = Planet(0, 0, 0, 0, 100, QColor(0,255,0))
         self.planet1.stationary = True
         self.planet2 = Planet(250, 250, 10, -10, 60, QColor(0,255,255))
         self.planet2.mass = self.planet1.mass / 2.0
         self.planets = [self.planet1, self.planet2]
-        """
 
         # Elongated
         """
@@ -142,6 +140,7 @@ class MainWindow(QMainWindow):
         """
 
         # Around the sun
+        """
         self.draw_trace_length = 10000
         self.planet1 = Planet(0, 0, 0, 0, 100, QColor(255, 255, 0))
         self.planet2 = Planet(250, 250, 10, -10, 60, QColor(0, 255, 255))
@@ -149,7 +148,20 @@ class MainWindow(QMainWindow):
         self.planet3 = Planet(-250, -250, -10, 10, 30, QColor(0, 255, 0))
         self.planet3.mass = self.planet1.mass / 100
         self.planets = [self.planet1, self.planet2, self.planet3]
+        """
 
+        # Planet with moon, got caught by the star
+        """
+        self.draw_trace_length = 10000
+        self.planet1 = Planet(0, 0, 0, 0, 100, QColor(255, 255, 0))
+        self.planet2 = Planet(3250, 3250, 0, -5, 30, QColor(0, 255, 255))
+        self.planet2.mass = self.planet1.mass / 50
+        self.planet3 = Planet(-250, -250, -10, 10, 30, QColor(0, 255, 0))
+        self.planet3.mass = self.planet1.mass / 100
+        moon = Planet(3350, 3300, 4, -7, 20, QColor(255, 255, 255))
+        moon.mass = self.planet1.mass / 2000
+        self.planets = [self.planet1, self.planet2, self.planet3, moon]
+        """
 
         # 3 body problem
         """
