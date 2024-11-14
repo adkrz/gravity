@@ -83,12 +83,25 @@ class Planet:
         return self.vector_to(planet2, force_value)
 
 
+class GraphicsView(QGraphicsView):
+    def wheelEvent(self, evt):
+        angle = evt.angleDelta().y()
+        factor = 1.0015 ** angle
+        targetViewportPos = evt.pos()
+        targetScenePos = self.mapToScene(targetViewportPos)
+        self.scale(factor, factor)
+        self.centerOn(targetScenePos)
+        deltaViewportPos = targetViewportPos - QPointF(self.viewport().width() / 2.0, self.viewport().height() / 2.0)
+        viewportCenter = self.mapFromScene(targetScenePos) - deltaViewportPos
+        self.centerOn(self.mapToScene(viewportCenter.toPoint()))
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.view = QGraphicsView()
+        self.view = GraphicsView()
         self.scene = QGraphicsScene()
         self.scene.setBackgroundBrush(QColor(0, 0, 0))
         self.view.setScene(self.scene)
