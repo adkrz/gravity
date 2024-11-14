@@ -99,10 +99,13 @@ class MainWindow(QMainWindow):
         self.scene_rect_zoom = 1
 
         # Normal orbit
+        """
         self.planet1 = Planet(0, 0, 0, 0, 100, QColor(0,255,0))
         self.planet1.stationary = True
         self.planet2 = Planet(250, 250, 10, -10, 60, QColor(0,255,255))
         self.planet2.mass = self.planet1.mass / 2.0
+        self.planets = [self.planet1, self.planet2]
+        """
 
         # Elongated
         """
@@ -113,6 +116,7 @@ class MainWindow(QMainWindow):
         self.planet2.mass = self.planet1.mass / 2.0
         self.scene_auto_adjust = True
         self.scene_rect_zoom = 1
+        self.planets = [self.planet1, self.planet2]
         """
 
         # Chasing
@@ -121,9 +125,33 @@ class MainWindow(QMainWindow):
         self.planet2 = Planet(250, 250, 10, -30, 60, QColor(0,255,255))
         self.planet2.mass = 2
         self.scene_auto_adjust = True
+        self.planets = [self.planet1, self.planet2]
         """
 
-        self.planets = [self.planet1, self.planet2]
+        # Around the sun
+        self.draw_trace_length = 10000
+        self.planet1 = Planet(0, 0, 0, 0, 100, QColor(255, 255, 0))
+        self.planet2 = Planet(250, 250, 10, -10, 60, QColor(0, 255, 255))
+        self.planet2.mass = self.planet1.mass / 50
+        self.planet3 = Planet(-250, -250, -10, 10, 30, QColor(0, 255, 0))
+        self.planet3.mass = self.planet1.mass / 100
+        self.planets = [self.planet1, self.planet2, self.planet3]
+
+
+        # 3 body problem
+        """
+        self.draw_trace_length = 200000
+        radius = 600
+        self.planet1 = Planet(0, -radius, 0, 0, 100, QColor(0, 255, 0))
+        radius = 700
+        self.planet2 = Planet(-radius * math.cos(math.radians(-30)),
+                              -radius * math.sin(math.radians(-30)), 0, 0, 100, QColor(255, 255, 255))
+        radius = 400
+        self.planet3 = Planet(radius * math.cos(math.radians(-30)),
+                              -radius * math.sin(math.radians(-30)), 0, 0, 100, QColor(255, 255, 0))
+        self.planets = [self.planet1, self.planet2, self.planet3]
+        """
+
         for planet in self.planets:
             self.scene.addItem(planet.graphics_item)
 
