@@ -4,9 +4,9 @@ from typing import Sequence
 from collections import deque
 
 from PyQt5.QtCore import QRectF, QTimer, QPointF
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsEllipseItem
-
+from PyQt5.QtGui import QColor, QPainterPath, QPen
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsEllipseItem, \
+    QGraphicsPathItem
 
 GRAVITATIONAL_CONSTANT = 100000  # not the real one, but also the masses are not real...
 
@@ -52,13 +52,20 @@ class Planet:
         self.velocity = Vector(x_vel, y_vel)
         self.graphics_item = QGraphicsEllipseItem(self._gen_rect())
         self.graphics_item.setBrush(color)
-        self.trace = deque()
+        self._trace = deque()
+        self.trace_length = 2000
+        self.trace_graphics_item = QGraphicsPathItem()
+        self.trace_graphics_item.setPen(QPen(color, 3))
 
     def pos(self) -> QPointF:
         return self._pos
 
     def move_abs(self, pos: QPointF, update_view=True):
         self._pos = pos
+        if self.trace_length > 0:
+            self._trace.append(pos)
+            if len(self._trace) > self.trace_length:
+                self._trace.popleft()
         if update_view:
             self.update_view()
 
@@ -73,6 +80,16 @@ class Planet:
 
     def update_view(self):
         self.graphics_item.setRect(self._gen_rect())
+        if len(self._trace) > 1:
+            path = QPainterPath()
+            begin = True
+            for pt in self._trace:
+                if begin:
+                    path.moveTo(pt)
+                    begin = False
+                else:
+                    path.lineTo(pt)
+            self.trace_graphics_item.setPath(path)
 
     def dist_to(self, planet2: "Planet") -> float:
         return math.hypot(self._pos.x() - planet2._pos.x(), self._pos.y() - planet2._pos.y())
@@ -111,14 +128,16 @@ class MainWindow(QMainWindow):
         super().__init__(*args, **kwargs)
 
         self.view = GraphicsView()
+        self.view.setInteractive(False)
         self.scene = QGraphicsScene()
         self.scene.setBackgroundBrush(QColor(0, 0, 0))
         self.view.setScene(self.scene)
         self.view.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.scene.setItemIndexMethod(QGraphicsScene.NoIndex)
 
-        self.draw_trace_length = 2000
         self.scene_auto_adjust = False
         self.scene_rect_zoom = 1
+        self.draw_trace_length = 2000
 
         # Normal orbit
         self.planet1 = Planet(0, 0, 0, 0, 100, QColor(0,255,0))
@@ -194,7 +213,9 @@ class MainWindow(QMainWindow):
         """
 
         for planet in self.planets:
+            planet.trace_length = self.draw_trace_length
             self.scene.addItem(planet.graphics_item)
+            self.scene.addItem(planet.trace_graphics_item)
 
         self._fit_scene_rect()
         self.view.centerOn(self.planet1.graphics_item)
@@ -241,14 +262,6 @@ class MainWindow(QMainWindow):
         if update_view:
             if self.scene_auto_adjust:
                 self.view.fitInView(self.scene.sceneRect(), True)
-
-            for planet in self.planets:
-                pos = planet.pos()
-                e = self.scene.addEllipse(pos.x(), pos.y(), 5, 5, planet.color)
-                planet.trace.append(e)
-                if len(planet.trace) > self.draw_trace_length:
-                    last = planet.trace.popleft()
-                    self.scene.removeItem(last)
 
         self.view_update_divider = self.update_every_nth_frame if self.view_update_divider == 0 else self.view_update_divider - 1
         self.scene_rect_update_divider = self.scene_rect_update_every_nth_frame if self.scene_rect_update_divider == 0 else self.scene_rect_update_divider - 1
