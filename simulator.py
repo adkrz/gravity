@@ -37,6 +37,9 @@ class Vector:
     def scalar_divide(self, value: float) -> "Vector":
         return Vector(self.dx / value, self.dy / value)
 
+    def reversed(self) -> "Vector":
+        return Vector(-self.dx, -self.dy)
+
     @staticmethod
     def sum(vectors: Sequence["Vector"]) -> "Vector":
         return Vector(sum(v.dx for v in vectors), sum(v.dy for v in vectors))
@@ -60,9 +63,9 @@ class Planet:
     def pos(self) -> QPointF:
         return self._pos
 
-    def move_abs(self, pos: QPointF, update_view=True):
+    def move_abs(self, pos: QPointF, update_view=True, update_trace=True):
         self._pos = pos
-        if self.trace_length > 0:
+        if self.trace_length > 0 and update_trace:
             self._trace.append(pos)
             if len(self._trace) > self.trace_length:
                 self._trace.popleft()
@@ -120,6 +123,20 @@ class GraphicsView(QGraphicsView):
         deltaViewportPos = targetViewportPos - QPointF(self.viewport().width() / 2.0, self.viewport().height() / 2.0)
         viewportCenter = self.mapFromScene(targetScenePos) - deltaViewportPos
         self.centerOn(self.mapToScene(viewportCenter.toPoint()))
+
+
+class Counter:
+    def __init__(self, max_val):
+        self.value = max_val
+        self.max_val = max_val
+
+    def count_and_check_elapsed(self) -> bool:
+        self.value -= 1
+        ok = False
+        if self.value <= 0:
+            ok = True
+            self.value = self.max_val
+        return ok
 
 
 class MainWindow(QMainWindow):
@@ -229,42 +246,51 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.timer_update)
         self.timer.start()
 
-        self.view_update_divider = 0
-        self.update_every_nth_frame = 3
-        self.scene_rect_update_divider = 0
-        self.scene_rect_update_every_nth_frame = 50
+        self.view_update_counter = Counter(4)
+        self.scene_rect_update_counter = Counter(64)
+        self.trace_update_counter = Counter(8)
+
         self.time_step = 0.05
 
         self.setWindowTitle("Gravity")
         self.show()
 
     def timer_update(self):
-        update_view = self.view_update_divider == 0
-        update_scene_rect = self.scene_rect_update_divider == 0
+        update_view = self.view_update_counter.count_and_check_elapsed()
+        update_scene_rect = self.scene_rect_update_counter.count_and_check_elapsed()
+        update_traces = self.trace_update_counter.count_and_check_elapsed()
 
         positions = {p: p.pos() for p in self.planets}
+        forces = {p: [] for p in self.planets}
+
+        for i in range(len(self.planets)):
+            planet = self.planets[i]
+            if planet.stationary:
+                continue
+            for j in range(len(self.planets)):
+                if j != i:
+                    other_planet = self.planets[j]
+                    force = planet.force_to(other_planet)
+                    forces[planet].append(force)
+                    forces[other_planet].append(force.reversed())
+
         for planet in self.planets:
             if planet.stationary:
                 continue
-            other_planets = [p for p in self.planets if p != planet]
-            forces = [planet.force_to(p) for p in other_planets]
-            force_sum = Vector.sum(forces)
+            force_sum = Vector.sum(forces[planet])
             acceleration = force_sum.scalar_divide(planet.mass)
             new_vel = planet.velocity.add(acceleration.scalar_multiply(self.time_step))
             planet.velocity = new_vel
             new_pos = new_vel.scalar_multiply(self.time_step).movePoint(positions[planet])
             positions[planet] = new_pos
         for planet, pos in positions.items():
-            planet.move_abs(pos, update_view)
+            planet.move_abs(pos, update_view, update_traces)
 
         if update_scene_rect:
             self._fit_scene_rect()
         if update_view:
             if self.scene_auto_adjust:
                 self.view.fitInView(self.scene.sceneRect(), True)
-
-        self.view_update_divider = self.update_every_nth_frame if self.view_update_divider == 0 else self.view_update_divider - 1
-        self.scene_rect_update_divider = self.scene_rect_update_every_nth_frame if self.scene_rect_update_divider == 0 else self.scene_rect_update_divider - 1
 
     def _fit_scene_rect(self):
         rect = self.scene.itemsBoundingRect()
