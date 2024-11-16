@@ -265,13 +265,12 @@ class MainWindow(QMainWindow):
 
         for i in range(len(self.planets)):
             planet = self.planets[i]
-            if planet.stationary:
-                continue
-            for j in range(len(self.planets)):
-                if j != i:
-                    other_planet = self.planets[j]
-                    force = planet.force_to(other_planet)
+            for j in range(i+1, len(self.planets)):
+                other_planet = self.planets[j]
+                force = planet.force_to(other_planet)
+                if not planet.stationary:
                     forces[planet].append(force)
+                if not other_planet.stationary:
                     forces[other_planet].append(force.reversed())
 
         for planet in self.planets:
