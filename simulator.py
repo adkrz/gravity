@@ -4,7 +4,7 @@ from typing import Sequence
 from collections import deque
 
 from PyQt5.QtCore import QRectF, QTimer, QPointF
-from PyQt5.QtGui import QColor, QPainterPath, QPen
+from PyQt5.QtGui import QColor, QPainterPath, QPen, QPolygonF
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsEllipseItem, \
     QGraphicsPathItem
 
@@ -84,14 +84,9 @@ class Planet:
     def update_view(self):
         self.graphics_item.setRect(self._gen_rect())
         if len(self._trace) > 1:
-            path = QPainterPath()
-            begin = True
-            for pt in self._trace:
-                if begin:
-                    path.moveTo(pt)
-                    begin = False
-                else:
-                    path.lineTo(pt)
+            path = self.trace_graphics_item.path()
+            path.clear()
+            path.addPolygon(QPolygonF(self._trace))
             self.trace_graphics_item.setPath(path)
 
     def dist_to(self, planet2: "Planet") -> float:
@@ -260,7 +255,6 @@ class MainWindow(QMainWindow):
         update_scene_rect = self.scene_rect_update_counter.count_and_check_elapsed()
         update_traces = self.trace_update_counter.count_and_check_elapsed()
 
-        positions = {p: p.pos() for p in self.planets}
         forces = {p: [] for p in self.planets}
 
         for i in range(len(self.planets)):
@@ -280,10 +274,8 @@ class MainWindow(QMainWindow):
             acceleration = force_sum.scalar_divide(planet.mass)
             new_vel = planet.velocity.add(acceleration.scalar_multiply(self.time_step))
             planet.velocity = new_vel
-            new_pos = new_vel.scalar_multiply(self.time_step).movePoint(positions[planet])
-            positions[planet] = new_pos
-        for planet, pos in positions.items():
-            planet.move_abs(pos, update_view, update_traces)
+            new_pos = new_vel.scalar_multiply(self.time_step).movePoint(planet.pos())
+            planet.move_abs(new_pos, update_view, update_traces)
 
         if update_scene_rect:
             self._fit_scene_rect()
