@@ -8,41 +8,9 @@ from PyQt5.QtGui import QColor, QPainterPath, QPen, QPolygonF
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsEllipseItem, \
     QGraphicsPathItem
 
+from common import Vector, GraphicsView, Counter
+
 GRAVITATIONAL_CONSTANT = 100000  # not the real one, but also the masses are not real...
-
-
-class Vector:
-    def __init__(self, dx, dy):
-        self.dx = dx
-        self.dy = dy
-
-    @staticmethod
-    def fromAngleAndLength(angle, length) -> "Vector":
-        dx = length * math.cos(angle)
-        dy = length * math.sin(angle)
-        return Vector(dx, dy)
-
-    def movePoint(self, pt: QPointF) -> QPointF:
-        return QPointF(pt.x() + self.dx, pt.y() + self.dy)
-
-    def length(self) -> float:
-        return math.hypot(self.dx, self.dy)
-
-    def add(self, v2: "Vector") -> "Vector":
-        return Vector(self.dx + v2.dx, self.dy + v2.dy)
-
-    def scalar_multiply(self, value: float) -> "Vector":
-        return Vector(self.dx * value, self.dy * value)
-
-    def scalar_divide(self, value: float) -> "Vector":
-        return Vector(self.dx / value, self.dy / value)
-
-    def reversed(self) -> "Vector":
-        return Vector(-self.dx, -self.dy)
-
-    @staticmethod
-    def sum(vectors: Sequence["Vector"]) -> "Vector":
-        return Vector(sum(v.dx for v in vectors), sum(v.dy for v in vectors))
 
 
 class Planet:
@@ -100,38 +68,11 @@ class Planet:
         return math.atan2(planet2._pos.y() - self._pos.y(), planet2._pos.x() - self._pos.x())
 
     def vector_to(self, planet2: "Planet", length: float) -> Vector:
-        return Vector.fromAngleAndLength(self.angle_to(planet2), length)
+        return Vector.from_angle_and_length(self.angle_to(planet2), length)
 
     def force_to(self, planet2: "Planet") -> Vector:
         force_value = GRAVITATIONAL_CONSTANT * self.mass * planet2.mass / self.dist_to_squared(planet2)
         return self.vector_to(planet2, force_value)
-
-
-class GraphicsView(QGraphicsView):
-    def wheelEvent(self, evt):
-        angle = evt.angleDelta().y()
-        factor = 1.0015 ** angle
-        targetViewportPos = evt.pos()
-        targetScenePos = self.mapToScene(targetViewportPos)
-        self.scale(factor, factor)
-        self.centerOn(targetScenePos)
-        deltaViewportPos = targetViewportPos - QPointF(self.viewport().width() / 2.0, self.viewport().height() / 2.0)
-        viewportCenter = self.mapFromScene(targetScenePos) - deltaViewportPos
-        self.centerOn(self.mapToScene(viewportCenter.toPoint()))
-
-
-class Counter:
-    def __init__(self, max_val):
-        self.value = max_val
-        self.max_val = max_val
-
-    def count_and_check_elapsed(self) -> bool:
-        self.value -= 1
-        ok = False
-        if self.value <= 0:
-            ok = True
-            self.value = self.max_val
-        return ok
 
 
 class MainWindow(QMainWindow):
