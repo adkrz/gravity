@@ -14,16 +14,28 @@ G = 9.81
 
 class Pendulum:
     def __init__(self, x_hinge, y_hinge, length, mass, initial_angle_rad, color):
-        self.pt1 = QPointF(x_hinge, y_hinge)
+        self._pt1 = QPointF(x_hinge, y_hinge)
+        self._center = None
+        self._pt2 = None
         self.length = length
         self.mass = mass
         self.moment_of_inertia = mass * length * length / 3.0
-        self.angle = initial_angle_rad
+        self._angle = initial_angle_rad
         self.angular_velocity = 0
         self.angular_acceleration = 0
         self.graphics_item = QGraphicsLineItem(0, 0, 1, 1)
         self.graphics_item.setPen(color)
         self.update_view()
+
+    @property
+    def pt1(self) -> QPointF:
+        return self._pt1
+
+    @pt1.setter
+    def pt1(self, value: QPointF):
+        self._pt1 = value
+        self._center = None
+        self._pt2 = None
 
     def point_at_length(self, l: float) -> QPointF:
         return QPointF(self.pt1.x() + l * math.cos(self.angle),
@@ -31,11 +43,15 @@ class Pendulum:
 
     @property
     def pt2(self) -> QPointF:
-        return self.point_at_length(self.length)
+        if self._pt2 is None:
+            self._pt2 = self.point_at_length(self.length)
+        return self._pt2
 
     @property
     def center(self) -> QPointF:
-        return self.point_at_length(self.length / 2.0)
+        if self._center is None:
+            self._center = self.point_at_length(self.length / 2.0)
+        return self._center
 
     def torque(self, hinge_pt) -> float:
         x_dist = self.center.x() - hinge_pt.x()
@@ -46,10 +62,15 @@ class Pendulum:
         pt2 = self.pt2
         self.graphics_item.setLine(self.pt1.x(), self.pt1.y(), pt2.x(), pt2.y())
 
-    def set_angle(self, angle_rad: float, update_view=True):
-        self.angle = angle_rad
-        if update_view:
-            self.update_view()
+    @property
+    def angle(self) -> float:
+        return self._angle
+
+    @angle.setter
+    def angle(self, value: float):
+        self._angle = value
+        self._center = None
+        self._pt2 = None
 
 
 class MainWindow(QMainWindow):
