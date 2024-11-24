@@ -19,7 +19,7 @@ class Pendulum:
         self.length = length
         self.mass = mass
         self.moment_of_inertia = mass * length * length / 3.0
-        self.angle = 0
+        self.angle = initial_angle_rad
         self.angular_velocity = 0
         self.graphics_item = QGraphicsLineItem(0, 0, 1, 1)
         self.graphics_item.setPen(color)
