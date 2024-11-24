@@ -1,14 +1,13 @@
 import math
 import sys
-from typing import Sequence
 from collections import deque
 
 from PyQt5.QtCore import QRectF, QTimer, QPointF
-from PyQt5.QtGui import QColor, QPainterPath, QPen, QPolygonF
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsEllipseItem, \
-    QGraphicsPathItem, QGraphicsLineItem
+from PyQt5.QtGui import QColor, QPolygonF
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsPathItem, \
+    QGraphicsLineItem
 
-from common import GraphicsView, Counter
+from common import GraphicsView, Counter, Vector
 
 G = 9.81
 
@@ -21,6 +20,7 @@ class Pendulum:
         self.moment_of_inertia = mass * length * length / 3.0
         self.angle = initial_angle_rad
         self.angular_velocity = 0
+        self.angular_acceleration = 0
         self.graphics_item = QGraphicsLineItem(0, 0, 1, 1)
         self.graphics_item.setPen(color)
         self.update_view()
@@ -70,13 +70,15 @@ class MainWindow(QMainWindow):
         self.draw_trace_length = 2000
 
         self.pendulum = Pendulum(0, 0, 100, 50, math.radians(-30), QColor(0, 255, 0))
-        self.scene.addItem(self.pendulum.graphics_item)
-        self.pendulum2 = Pendulum(self.pendulum.pt2.x(), self.pendulum.pt2.y(), 50, 50, math.radians(-30), QColor(0, 0, 255))
-        self.scene.addItem(self.pendulum2.graphics_item)
-        self.pendulum3 = Pendulum(self.pendulum2.pt2.x(), self.pendulum2.pt2.y(), 50, 50, math.radians(-30),
+        
+        self.pendulum2 = Pendulum(self.pendulum.pt2.x(), self.pendulum.pt2.y(), 50, 50, math.radians(90), QColor(0, 0, 255))
+        
+        self.pendulum3 = Pendulum(self.pendulum2.pt2.x(), self.pendulum2.pt2.y(), 50, 50, math.radians(90),
                                   QColor(0, 255, 255))
-        self.scene.addItem(self.pendulum3.graphics_item)
+        
         self.pendulum_chain = [self.pendulum, self.pendulum2, self.pendulum3]
+        for p in self.pendulum_chain:
+            self.scene.addItem(p.graphics_item)
 
         self.trace_length = 2000
         self.trace_points = deque()
@@ -110,16 +112,27 @@ class MainWindow(QMainWindow):
         update_view = self.view_update_counter.count_and_check_elapsed()
 
         new_angles = []
+        new_accels = []
         for i in range(len(self.pendulum_chain)):
             current = self.pendulum_chain[i]
             current_rotation_pt = current.pt1
             trq = sum(pp.torque(current_rotation_pt) for pp in self.pendulum_chain[i:])
+            if i > 0:
+                previous = self.pendulum_chain[i-1]
+                linear_accel = previous.angular_acceleration * previous.length
+                linear_accel_vector = Vector.from_angle_and_length(previous.angle + math.radians(90), linear_accel)
+                inertia_force = linear_accel_vector.scalar_multiply(current.mass)
+                r = Vector.from_2_pts(current.pt1, current.center)
+                inertia_trq = r.cross_product(inertia_force)
+                trq -= inertia_trq
             accel = trq / current.moment_of_inertia
+            new_accels.append(accel)
             current.angular_velocity = current.angular_velocity + accel * self.time_step
             new_angle = current.angle + current.angular_velocity * self.time_step
             new_angles.append(new_angle)
         for i in range(len(self.pendulum_chain)):
             self.pendulum_chain[i].angle = new_angles[i]
+            self.pendulum_chain[i].angular_acceleration = new_accels[i]
             if i > 0:
                 self.pendulum_chain[i].pt1 = self.pendulum_chain[i - 1].pt2
 

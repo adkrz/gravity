@@ -67,6 +67,12 @@ class Vector:
 
     def reversed(self) -> "Vector":
         return Vector(-self.dx, -self.dy)
+    
+    def cross_product(self, v2: "Vector") -> float:
+        return self.dx + v2.dy - self.dy * v2.dx
+    
+    def dot_product(self, v2: "Vector") -> float:
+        return self.dx + v2.dx + self.dy * v2.dy
 
     @staticmethod
     def sum(vectors: Sequence["Vector"]) -> "Vector":
